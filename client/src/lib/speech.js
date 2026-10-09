@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+/** Tốc độ phát khi bấm nút 🐢 (trình duyệt giữ nguyên cao độ giọng, chỉ chậm lại). */
+const SLOW_RATE = 0.7;
+
 /** Giọng dự phòng của trình duyệt khi câu hỏi chưa có file mp3. */
-function speakWithBrowser(text, { onEnd }) {
+function speakWithBrowser(text, { slow, onEnd }) {
   const synth = window.speechSynthesis;
   if (!synth) return Promise.reject(new Error("Trình duyệt không hỗ trợ đọc"));
   synth.cancel();
   const utter = new SpeechSynthesisUtterance(text);
   utter.lang = "en-US";
-  utter.rate = 0.85;
+  utter.rate = slow ? 0.6 : 0.85;
   const voice = synth.getVoices().find((v) => v.lang === "en-US" && /natural|google|samantha/i.test(v.name))
     ?? synth.getVoices().find((v) => v.lang.startsWith("en"));
   if (voice) utter.voice = voice;
@@ -19,14 +22,17 @@ function speakWithBrowser(text, { onEnd }) {
 
 /**
  * Hook phát câu đọc của 1 câu hỏi: ưu tiên mp3 (giọng Edge), không có thì dùng giọng trình duyệt.
+ * `speaking` = false | "normal" | "slow" (đang đọc ở chế độ nào).
  * `blocked` = true khi trình duyệt chặn tự phát âm thanh → cần người dùng bấm nút loa.
  */
 export function useSpeaker() {
   const audioRef = useRef(null);
+  const playIdRef = useRef(0); // bỏ qua sự kiện "kết thúc" của lượt đọc cũ đã bị ngắt
   const [speaking, setSpeaking] = useState(false);
   const [blocked, setBlocked] = useState(false);
 
   const stop = useCallback(() => {
+    playIdRef.current++;
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -36,23 +42,26 @@ export function useSpeaker() {
   }, []);
 
   const speak = useCallback(
-    async ({ audioUrl, text }) => {
+    async ({ audioUrl, text }, { slow = false } = {}) => {
       stop();
-      const onEnd = () => setSpeaking(false);
-      setSpeaking(true);
+      const playId = playIdRef.current;
+      const onEnd = () => playId === playIdRef.current && setSpeaking(false);
+      setSpeaking(slow ? "slow" : "normal");
       try {
         if (audioUrl) {
           const audio = new Audio(audioUrl);
           audioRef.current = audio;
+          audio.preservesPitch = true;
+          audio.playbackRate = slow ? SLOW_RATE : 1;
           audio.onended = onEnd;
           audio.onerror = onEnd;
           await audio.play();
         } else {
-          await speakWithBrowser(text, { onEnd });
+          await speakWithBrowser(text, { slow, onEnd });
         }
         setBlocked(false);
       } catch (err) {
-        setSpeaking(false);
+        onEnd();
         if (err?.name === "NotAllowedError") setBlocked(true);
       }
     },

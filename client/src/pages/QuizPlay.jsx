@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, ChevronRight, RotateCcw, Star, Timer, Trophy, Volume2, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, RotateCcw, Star, Timer, Trophy, Turtle, Volume2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api.js";
@@ -69,7 +69,7 @@ function Player({ quiz, onRestart }) {
     else setFinished(true);
   }, [choice, index, total]);
 
-  // Phím tắt: 1/2 hoặc ←/→ để chọn, Enter để qua câu, Space để nghe lại.
+  // Phím tắt: 1/2 hoặc ←/→ để chọn, Enter để qua câu, Space để nghe lại, S để đọc chậm.
   useEffect(() => {
     if (finished) return;
     const onKey = (e) => {
@@ -77,6 +77,7 @@ function Player({ quiz, onRestart }) {
       if (["1", "a", "ArrowLeft"].includes(e.key)) choose("A");
       else if (["2", "b", "ArrowRight"].includes(e.key)) choose("B");
       else if (e.key === "Enter") next();
+      else if (e.key === "s" || e.key === "S") speak(question, { slow: true });
       else if (e.key === " ") {
         e.preventDefault();
         speak(question);
@@ -123,14 +124,25 @@ function Player({ quiz, onRestart }) {
           </p>
           <button
             type="button"
+            onClick={() => speak(question, { slow: true })}
+            aria-label="Đọc chậm"
+            title="Đọc chậm (S)"
+            className={`grid size-11 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700 shadow-sm
+              transition hover:scale-105 hover:bg-emerald-200 active:scale-95
+              ${speaking === "slow" ? "scale-105 bg-emerald-200" : ""}`}
+          >
+            <Turtle className={`size-6 ${speaking === "slow" ? "animate-pulse" : ""}`} strokeWidth={2.25} />
+          </button>
+          <button
+            type="button"
             onClick={() => speak(question)}
             aria-label="Nghe lại"
             title="Nghe lại (Space)"
             className={`grid size-14 shrink-0 place-items-center rounded-full bg-sun-400 text-slate-800 shadow-md
               shadow-sun-500/40 transition hover:scale-105 hover:bg-sun-300 active:scale-95
-              ${speaking ? "scale-105 bg-sun-300" : ""} ${blocked ? "animate-ring" : ""}`}
+              ${speaking === "normal" ? "scale-105 bg-sun-300" : ""} ${blocked ? "animate-ring" : ""}`}
           >
-            <Volume2 className={`size-7 ${speaking ? "animate-pulse" : ""}`} strokeWidth={2.5} />
+            <Volume2 className={`size-7 ${speaking === "normal" ? "animate-pulse" : ""}`} strokeWidth={2.5} />
           </button>
         </div>
         {blocked && !choice && (
