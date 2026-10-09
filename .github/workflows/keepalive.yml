@@ -1,0 +1,16 @@
+# Gọi /api/health mỗi 3 ngày để Supabase free không bị pause (pause sau 7 ngày không hoạt động).
+# Cần tạo biến APP_URL: GitHub repo → Settings → Secrets and variables → Actions → Variables.
+name: Keep alive
+
+on:
+  schedule:
+    - cron: "0 1 */3 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping app
+        if: ${{ vars.APP_URL != '' }}
+        run: curl -fsS --retry 5 --retry-delay 30 --max-time 120 "${{ vars.APP_URL }}/api/health"
