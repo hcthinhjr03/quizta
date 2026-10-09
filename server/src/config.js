@@ -8,12 +8,22 @@ if (fs.existsSync(envFile)) process.loadEnvFile(envFile);
 
 const isProd = process.env.NODE_ENV === "production";
 
+// Chỉ giữ phần gốc của URL (lỡ dán cả ".../rest/v1/" thì Storage sẽ lỗi "Invalid path").
+function originOf(url) {
+  if (!url) return "";
+  try {
+    return new URL(url.trim()).origin;
+  } catch {
+    return url.trim();
+  }
+}
+
 export const config = {
   isProd,
   port: Number(process.env.PORT) || 3001,
   // Dev mặc định mật khẩu "admin"; production bắt buộc phải đặt ADMIN_PASSWORD.
   adminPassword: process.env.ADMIN_PASSWORD || (isProd ? "" : "admin"),
-  supabaseUrl: process.env.SUPABASE_URL || "",
+  supabaseUrl: originOf(process.env.SUPABASE_URL),
   supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
   supabaseBucket: process.env.SUPABASE_BUCKET || "media",
   localDataDir: path.join(serverDir, ".local-data"),
